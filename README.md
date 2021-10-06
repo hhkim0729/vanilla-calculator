@@ -13,6 +13,6 @@ A simple calculator in Vanilla JS
 
 ### 보너스
 
-- 소수점 게산
+- 소수점 계산
 - `%` 버튼
 - `=` 버튼을 연속해서 클릭하면 마지막 연산 반복

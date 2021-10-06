@@ -21,6 +21,7 @@ main {
 .result {
   text-align: right;
   font-size: 3rem;
+  height: 5rem;
 }
 
 .btn-box {
