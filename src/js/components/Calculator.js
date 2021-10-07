@@ -1,4 +1,3 @@
-import { $ } from '../utils/dom.js';
 import Component from './Component.js';
 
 class Calculator extends Component {
@@ -8,24 +7,24 @@ class Calculator extends Component {
 
   setInitValue() {
     this.state = {
-      prevNum: 0,
-      result: 0,
-      currentNum: 0,
-      operator: '',
-      btnText: 'AC',
-      isNewNum: true,
-      isOperatorClicked: false,
+      prevNum: 0, // 최근에 입력한 값
+      result: 0, // 연산 결과
+      currentNum: 0, // 현재 화면에 출력되는 값
+      operator: '', // 현재 연산자
+      btnText: 'AC', // AC / C 버튼 문구
+      isNewNum: true, // 새로운 숫자를 입력받는지 - true /  10단위로 늘릴건지 - false
+      isOperatorClicked: false, // 새로운 계산이 시작되었는지 (= 또는 AC 클릭 시 false로 리셋)
     };
   }
 
   makeTemplate() {
     const { currentNum, btnText } = this.state;
     return `<article class="calculator">
-      <div class="result">${currentNum}</div>
+      <div class="result">${currentNum.toLocaleString()}</div>
       <div class="btn-box">
         <button class="btn-top btn-clear">${btnText}</button>
         <button class="btn-top btn-sign">+/-</button>
-        <button class="btn-top btn-percent">%</button>
+        <button class="btn-top btn-percent" disabled>%</button>
         <button class="btn-left btn-operator btn-divide">➗</button>
         <button class="btn-right btn-number">7</button>
         <button class="btn-right btn-number">8</button>
@@ -40,19 +39,35 @@ class Calculator extends Component {
         <button class="btn-right btn-number">3</button>
         <button class="btn-left btn-operator btn-plus">➕</button>
         <button class="btn-right btn-number btn-zero">0</button>
-        <button class="btn-right btn-point">.</button>
+        <button class="btn-right btn-point" disabled>.</button>
         <button class="btn-left btn-equal">=</button>
       </div>
     </article>`;
   }
 
   initEventHandlers() {
-    const calculate = (prevNum, currentNum, operator) => {
+    // 연산자 클릭 또는 = 클릭 시 연산을 위한 함수
+    const calculate = (first, second, operator) => {
       let result = 0;
-      console.log(prevNum, currentNum);
+      if (first === 'Error') {
+        return 'Error';
+      }
       switch (operator) {
         case '➕':
-          result = prevNum + currentNum;
+          result = Number(first) + Number(second);
+          break;
+        case '➖':
+          result = first - second;
+          break;
+        case '✖':
+          result = first * second;
+          break;
+        case '➗':
+          if (second === 0) {
+            result = 'Error';
+          } else {
+            result = first / second;
+          }
           break;
         default:
           break;
@@ -74,24 +89,56 @@ class Calculator extends Component {
       const newState = { ...this.state };
 
       if (classList.contains('btn-clear')) {
-        newState.prevNum = 0;
-        newState.result = 0;
+        if (btnText === 'C') {
+          newState.btnText = 'AC';
+        } else if (btnText === 'AC') {
+          newState.operator = '';
+          newState.result = 0;
+          newState.isOperatorClicked = false;
+        }
         newState.currentNum = 0;
-        newState.operator = '';
-        newState.btnText = 'AC';
         newState.isNewNum = true;
-        newState.isOperatorClicked = false;
+        this.setState(newState);
+
+        const operatorBtns = document.querySelectorAll('.btn-operator');
+        operatorBtns.forEach((btn) => {
+          if (btnText === 'C' && btn.innerText === operator) {
+            btn.classList.add('btn-clicked');
+          } else {
+            btn.classList.remove('btn-clicked');
+          }
+        });
+        return;
+      }
+
+      if (classList.contains('btn-sign')) {
+        if (currentNum === 0 || currentNum === 'Error') {
+          newState.currentNum = '-0';
+        } else {
+          newState.currentNum = -currentNum;
+          newState.result = -result;
+        }
         this.setState(newState);
         return;
       }
 
       if (classList.contains('btn-number')) {
-        const clickedNum = Number(innerText);
+        if (String(currentNum).length === 9) {
+          return;
+        }
+
+        let clickedNum = Number(innerText);
+        if (currentNum === '-0') {
+          clickedNum *= -1;
+        }
         if (isNewNum) {
           newState.currentNum = clickedNum;
           newState.isNewNum = false;
         } else {
-          newState.currentNum = currentNum * 10 + clickedNum;
+          newState.currentNum =
+            currentNum >= 0
+              ? currentNum * 10 + clickedNum
+              : currentNum * 10 - clickedNum;
         }
         newState.btnText = 'C';
         this.setState(newState);
@@ -99,27 +146,50 @@ class Calculator extends Component {
       }
 
       if (classList.contains('btn-operator')) {
+        newState.isNewNum = true;
+        if (result === 'Error') {
+          newState.currentNum = 'Error';
+          this.setState(newState);
+          return;
+        }
+
         if (!isOperatorClicked) {
           newState.prevNum = currentNum;
-          newState.operator = innerText;
-          newState.isNewNum = true;
           newState.isOperatorClicked = true;
-          // if (prevNum !== 0) {
-          //   newState.result = calculate(prevNum, result, operator);
-          //   newState.currentNum = newState.result;
-          // }
-          this.setState(newState);
+        } else {
+          newState.result = calculate(prevNum, currentNum, operator);
+          newState.prevNum = newState.result;
+          newState.currentNum = newState.result;
         }
+        newState.operator = innerText;
+        this.setState(newState);
+
+        const operatorBtns = document.querySelectorAll('.btn-operator');
+        operatorBtns.forEach((btn) => {
+          if (btn.innerText === innerText) {
+            btn.classList.add('btn-clicked');
+          }
+        });
         return;
       }
 
       if (classList.contains('btn-equal')) {
+        if (result === 'Error') {
+          newState.currentNum = 'Error';
+          newState.isNewNum = true;
+          this.setState(newState);
+          return;
+        }
+
         if (isOperatorClicked) {
           newState.result = calculate(prevNum, currentNum, operator);
           newState.prevNum = currentNum;
         } else {
-          newState.result = calculate(prevNum, result, operator);
+          newState.result = operator
+            ? calculate(currentNum, prevNum, operator)
+            : currentNum;
         }
+
         newState.currentNum = newState.result;
         newState.isNewNum = true;
         newState.isOperatorClicked = false;

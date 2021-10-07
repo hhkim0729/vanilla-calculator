@@ -38,3 +38,7 @@ main {
 .btn-zero {
   grid-column: span 2;
 }
+
+.btn-clicked {
+  background-color: aliceblue;
+}
